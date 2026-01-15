@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # 1. BASE DE DATOS
+  db:
+    image: mongo:latest
+    container_name: finance_db
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  # 2. BACKEND (NestJS)
+  api:
+    build: ./backend
+    container_name: finance_api
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - MONGO_URI=mongodb://db:27017/financeflow
+      # Permitimos que el frontend (que corre en el navegador del usuario) acceda
+      - FRONTEND_URL=http://localhost:3000 
+    depends_on:
+      - db
+
+  # 3. FRONTEND (Next.js) - ¡NUEVO!
+  web:
+    build: ./frontend
+    container_name: finance_web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # Next.js necesita saber dónde está la API.
+      # OJO: Como usamos "use client" y axios desde el navegador,
+      # la API sigue estando en localhost:3001 para el usuario.
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+    depends_on:
+      - api # Espera a que la API arranque antes de levantar el front
+
+volumes:
+  mongo_data:
